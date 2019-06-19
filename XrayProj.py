@@ -3,6 +3,11 @@ import numpy as np
 from os.path import join
 from imageio import get_writer,imread,imwrite
 import astra
+import matplotlib.pyplot as plt
+from skimage import measure
+from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+import matplotlib.tri as mtri
+
 
 
 # Configuration.
@@ -42,12 +47,12 @@ projections[projections > 1.1] = 1.1
 projections /= 1.1
 
 
-# Save projections.as usual, most xray images are stored in .tiff
-projections = np.round(projections * 65535).astype(np.uint16)
-for i in range(num_of_projections):
-    projection = projections[:, i, :]
-    with get_writer(join(output_dir, 'proj%04d.tif' % i)) as writer:
-        writer.append_data(projection, {'compress': 9})
+# # Save projections.as usual, most xray images are stored in .tiff
+# projections = np.round(projections * 65535).astype(np.uint16)
+# for i in range(num_of_projections):
+#     projection = projections[:, i, :]
+#     with get_writer(join(output_dir, 'proj%04d.tif' % i)) as writer:
+#         writer.append_data(projection, {'compress': 9})
 
 # Cleanup.
 astra.data3d.delete(projections_id)
@@ -81,14 +86,41 @@ reconstruction[reconstruction < 0] = 0
 reconstruction /= np.max(reconstruction)
 reconstruction = np.round(reconstruction * 255).astype(np.uint8)
 
-output_dir = 'reconstruction'
-# Save reconstruction.
-for i in range(detector_rows):
-    im = reconstruction[i, :, :]
-    im = np.flipud(im)
-    imwrite(join(output_dir, 'reco%04d.png' % i), im)
+# extract mesh from the volumeric image stack
+verts_rec, faces_rec, normals_rec, values_rec = measure.marching_cubes_lewiner(reconstruction, level=None, spacing=(1.0, 1.0, 1.0), gradient_direction='descent', step_size=6, allow_degenerate=True, use_classic=False)
+
+print(verts_rec.shape)
+print(faces_rec.shape)
+
+# extract mesh from the volumeric image stack
+verts_ori, faces_ori, normals_ori, values_ori = measure.marching_cubes_lewiner(phantom, level=None, spacing=(1.0, 1.0, 1.0), gradient_direction='descent', step_size=6, allow_degenerate=True, use_classic=False)
+
+print(verts_ori.shape)
+print(faces_ori.shape)
 
 
+fig = plt.figure()
+ax = fig.add_subplot(111, projection='3d')
+ax.plot_trisurf(verts_rec[:,0],verts_rec[:,1],verts_rec[:,2],triangles=faces_rec, edgecolor='k',alpha=0)
+
+ax.plot_trisurf(verts_ori[:,0],verts_ori[:,1],verts_ori[:,2],triangles=faces_ori, edgecolor='r',alpha=0)
+
+ax.set_xlim(0, reconstruction.shape[0])
+ax.set_ylim(0, reconstruction.shape[1])
+ax.set_zlim(0, reconstruction.shape[2])
+plt.show()
+
+
+# fig2 = plt.figure()
+# # for i in range(50, 130):
+#     i=100
+#     fig2.suptitle('layer: ' + str(i + 1))
+#     plt.subplot(121)
+#     plt.imshow(phantom[:,i,:], cmap='gray')
+#
+#     plt.subplot(122)
+#     plt.imshow(reconstruction[:,i,:], cmap='gray')
+#     plt.pause(.001)
 
 # Cleanup GPU
 astra.algorithm.delete(algorithm_id)
