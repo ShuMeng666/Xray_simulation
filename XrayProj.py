@@ -7,6 +7,8 @@ import matplotlib.pyplot as plt
 from skimage import measure,data,filters
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 import matplotlib.tri as mtri
+import functions as func
+
 
 
 # Configuration.
@@ -87,12 +89,17 @@ reconstruction = np.round(reconstruction * 255).astype(np.uint8)
 
 
 # use Otsu thresholding method to enhance blurring boundary
-'''to solve: 2d image smooth to get rid of boundary oscillation '''
+'''to solve: 2d image smooth to get rid of boundary oscillation, edge smooth? '''
 enhanced_reconstruction = np.zeros_like(reconstruction)
 val = filters.threshold_otsu(reconstruction)
-print(val)
 mask = reconstruction < val
 enhanced_reconstruction = 1 - mask.astype(int)
+
+# validate reconstruction by calculating Correlation coefficient and Mean square error
+cor = measure._structural_similarity.compare_ssim(enhanced_reconstruction, phantom)
+print('Correlation coefficient: '+ str(cor))
+mse = func.mse(enhanced_reconstruction, phantom)
+print('Mean square error: '+ str(mse))
 
 
 # extract mesh from the volumeric image stack
@@ -100,25 +107,24 @@ verts_rec, faces_rec, normals_rec, values_rec = measure.marching_cubes_lewiner(e
 verts_ori, faces_ori, normals_ori, values_ori = measure.marching_cubes_lewiner(phantom, level=None, spacing=(1.0, 1.0, 1.0), gradient_direction='descent', step_size=6, allow_degenerate=True, use_classic=False)
 
 
-'''to solve:  how  to quantify the reconstruction'''
-fig = plt.figure()
-fig.suptitle('angle number: ' + str(angles.shape))
-ax = fig.add_subplot(1, 2, 1, projection='3d')
-ax.plot_trisurf(verts_rec[:,0],verts_rec[:,1],verts_rec[:,2],triangles=faces_rec, edgecolor='k',alpha=0)
-# ax.set_xlim(0, reconstruction.shape[0])
-# ax.set_ylim(0, reconstruction.shape[1])
-# ax.set_zlim(0, reconstruction.shape[2])
+# fig = plt.figure()
+# fig.suptitle('angle number: ' + str(angles.shape))
+# ax = fig.add_subplot(1, 2, 1, projection='3d')
+# ax.plot_trisurf(verts_rec[:,0],verts_rec[:,1],verts_rec[:,2],triangles=faces_rec, edgecolor='k',alpha=0)
+# # ax.set_xlim(0, reconstruction.shape[0])
+# # ax.set_ylim(0, reconstruction.shape[1])
+# # ax.set_zlim(0, reconstruction.shape[2])
+# # plt.show()
+# ax.title.set_text('reconstructed')
+#
+# ax = fig.add_subplot(1, 2, 2, projection='3d')
+# ax.plot_trisurf(verts_ori[:,0],verts_ori[:,1],verts_ori[:,2],triangles=faces_ori, edgecolor='r',alpha=0)
+# # ax.set_xlim(0, reconstruction.shape[0])
+# # ax.set_ylim(0, reconstruction.shape[1])
+# # ax.set_zlim(0, reconstruction.shape[2])
 # plt.show()
-ax.title.set_text('reconstructed')
-
-ax = fig.add_subplot(1, 2, 2, projection='3d')
-ax.plot_trisurf(verts_ori[:,0],verts_ori[:,1],verts_ori[:,2],triangles=faces_ori, edgecolor='r',alpha=0)
-# ax.set_xlim(0, reconstruction.shape[0])
-# ax.set_ylim(0, reconstruction.shape[1])
-# ax.set_zlim(0, reconstruction.shape[2])
-plt.show()
-ax.title.set_text('ground truth')
-
+# ax.title.set_text('ground truth')
+#
 # fig2 = plt.figure()
 # for i in range(50, 130):
 #     fig2.suptitle('layer: ' + str(i + 1))
